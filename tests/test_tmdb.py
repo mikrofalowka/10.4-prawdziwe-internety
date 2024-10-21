@@ -1,6 +1,28 @@
 import tmdb_client
 from unittest.mock import Mock
-#get_single_movie, get_movie_images, get_single_movie_cast.
+from main import app
+import pytest
+
+# Zmodyfikuj powyższy test tak, aby sprawdzał również poszczególne listy filmów, 
+# które można przekazać w parametrze list_type. 
+# Wykorzystaj możliwość parametryzowania testów.
+@pytest.mark.parametrize('list_type, result', (
+      ('popular','popular'),
+      ('top_rated','top_rated'),
+      ('upcoming','upcoming'),
+      ('now_playing','now_playing')
+))
+
+def test_homepage(monkeypatch, list_type, result):
+   get_movies_mock = Mock(return_value={'results': []})
+   monkeypatch.setattr("tmdb_client.get_movies_list", get_movies_mock)
+
+   with app.test_client() as client:
+       response = client.get(f'/')
+       assert response.status_code == 200
+       assert tmdb_client.get_movies_list(list_type) == get_movies_mock(result)
+       get_movies_mock.assert_called_with(f'{list_type}')
+
 
 def test_get_movies_list(monkeypatch):
    # Lista, którą będzie zwracać przysłonięte "zapytanie do API"
@@ -21,9 +43,13 @@ def test_get_single_movie(monkeypatch):
 
    mock_movie_id = 123
    mock_movie_response = {'title': 'Mock', 'id': mock_movie_id}
-
+   
    requests_mock = Mock()
-   requests_mock.return_value.json.return_value = mock_movie_response
+   
+   response = requests_mock.return_value
+
+   response.json.return_value = mock_movie_response
+   
    monkeypatch.setattr('tmdb_client.requests.get', requests_mock)
 
    movie = tmdb_client.get_single_movie(mock_movie_id)
